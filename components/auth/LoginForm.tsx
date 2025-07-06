@@ -50,16 +50,25 @@ export default function LoginForm() {
       if (error) {
         toast.error("Error", {
           description: error.message || "Login failed. Please try again.",
+          style: {
+            background: 'red',
+          }
         })
       } else {
         toast.success("Success!", {
           description: "Login successful! Redirecting...",
+          style: {
+            background: 'green',
+          }
         })
-        router.push("/dashboard")
+        router.push("/")
       }
     } catch (error) {
       toast.error("Error", {
         description: "Something went wrong. Please try again.",
+        style: {
+          background: 'red',
+        }
       })
       console.log(error)
     } finally {

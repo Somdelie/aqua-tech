@@ -1,4 +1,5 @@
 "use client"
+import { useRouter } from 'next/navigation';
 
 import {
   BadgeCheck,
@@ -29,6 +30,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { signOut } from "@/lib/auth-client"
 
 export function NavUser({
   user,
@@ -36,10 +38,28 @@ export function NavUser({
   user: {
     name: string
     email: string
-    avatar: string
+    avatar?: string
   }
 }) {
   const { isMobile } = useSidebar()
+  const router = useRouter()
+
+  async function handleLogout() {
+    try {
+      await signOut({
+  fetchOptions: {
+    onSuccess: () => {
+      router.push("/"); // redirect to login page
+    },
+  },
+});
+    } catch (error) {
+      console.error("Logout failed:", error)
+      // Handle logout error, e.g., show a notification
+
+      
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -82,19 +102,8 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
                 <BadgeCheck />
                 Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
@@ -102,7 +111,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>

@@ -20,7 +20,11 @@ export default async function FrontLayout({
       <Navbar
         session={
           session?.user
-            ? { ...session.user, image: session.user.image ?? undefined }
+            ? {
+                ...session.user,
+                image: session.user.image ?? undefined,
+                role: session.user.role ?? undefined,
+              }
             : undefined
         }
       />

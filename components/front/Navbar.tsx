@@ -18,12 +18,14 @@ import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { signOut } from "@/lib/auth-client"
 
 interface SessionUser {
   id: string
   name: string
   email: string
-  image?: string // Optional, if you want to display user image
+  role?: string // Add role to the interface
+  image?: string
 }
 
 export default function Navbar({ session }: { session?: SessionUser }) {
@@ -38,22 +40,37 @@ export default function Navbar({ session }: { session?: SessionUser }) {
     { name: "Products", href: "/products" },
   ]
 
-  const userMenuItems = [
-    { name: "Profile", href: "/profile", icon: UserIcon },
-    { name: "Dashboard", href: "/dashboard", icon: PackageIcon },
-    { name: "My Orders", href: "/orders", icon: ShoppingCartIcon },
-    { name: "Wishlist", href: "/wishlist", icon: HeartIcon },
-    { name: "Settings", href: "/settings", icon: SettingsIcon },
+  // Define all user menu items with role requirements
+  const allUserMenuItems = [
+    { name: "Profile", href: "/profile", icon: UserIcon, roles: ["USER", "ADMIN"] },
+    { name: "Dashboard", href: "/dashboard", icon: PackageIcon, roles: ["ADMIN"] }, // Only for admins
+    { name: "My Orders", href: "/orders", icon: ShoppingCartIcon, roles: ["USER", "ADMIN"] },
+    { name: "Wishlist", href: "/wishlist", icon: HeartIcon, roles: ["USER", "ADMIN"] },
+    { name: "Settings", href: "/settings", icon: SettingsIcon, roles: ["USER", "ADMIN"] },
   ]
+
+  // Filter menu items based on user role
+  const userMenuItems = allUserMenuItems.filter((item) => {
+    if (!session?.role) return item.roles.includes("USER") // Default to USER role if no role specified
+    return item.roles.includes(session.role)
+  })
 
   const handleLogin = () => {
     router.push("/login")
   }
 
-  const handleLogout = () => {
-    console.log("Logging out...")
-    // You might want to call your logout function here
-    // signOut() or similar
+  async function handleLogout() {
+    try {
+      await signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            router.push("/")
+          },
+        },
+      })
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
   }
 
   const getInitials = (name: string) => {
@@ -64,6 +81,9 @@ export default function Navbar({ session }: { session?: SessionUser }) {
       .toUpperCase()
       .slice(0, 2)
   }
+
+  // Check if user is admin
+  const isAdmin = session?.role === "ADMIN"
 
   return (
     <motion.header
@@ -115,6 +135,7 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{session.name}</p>
                       <p className="text-xs leading-none text-muted-foreground">{session.email}</p>
+                      {isAdmin && <p className="text-xs leading-none text-teal-600 font-medium">Administrator</p>}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -156,7 +177,6 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                   </Button>
                 </div>
               </SheetHeader>
-
               <div className="flex flex-col h-full">
                 {/* User Section */}
                 {session && (
@@ -169,6 +189,7 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                       <div className="flex flex-col min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{session.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{session.email}</p>
+                        {isAdmin && <p className="text-xs text-teal-600 font-medium">Administrator</p>}
                       </div>
                     </div>
                   </div>

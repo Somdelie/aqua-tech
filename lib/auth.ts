@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import db from "@/prisma/db";
-import { nextCookies } from "better-auth/next-js";
+import { betterAuth } from "better-auth"
+import { prismaAdapter } from "better-auth/adapters/prisma"
+import db from "@/prisma/db"
+import { nextCookies } from "better-auth/next-js"
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -22,21 +22,23 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+      scope: ["user:email"],
       mapProfileToUser: (profile) => {
         return {
           firstName: profile.name?.split(" ")[0] || "",
           lastName: profile.name?.split(" ")[1] || "",
-        };
+        }
       },
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      scope: ["openid", "email", "profile"],
       mapProfileToUser: (profile) => {
         return {
           firstName: profile.given_name || "",
           lastName: profile.family_name || "",
-        };
+        }
       },
     },
   },
@@ -61,5 +63,8 @@ export const auth = betterAuth({
     },
     modelName: "user",
   },
+  secret: process.env.BETTER_AUTH_SECRET!,
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  trustedOrigins: ["http://localhost:3000", process.env.BETTER_AUTH_URL || "http://localhost:3000"],
   plugins: [nextCookies()],
-});
+})
