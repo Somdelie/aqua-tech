@@ -300,7 +300,7 @@ export function CategoriesDataTable({ categories }: CategoriesDataTableProps) {
     if (editingCategory) {
       console.log("Update category:", editingCategory.id, categoryData)
     } else {
-      console.log("Create category:", categoryData)
+    
     }
     setCategoryDialogOpen(false)
     setEditingCategory(null)
