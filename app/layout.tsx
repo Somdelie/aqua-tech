@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "../providers/index";
 
 // Fonts
 const geistSans = Geist({
@@ -59,18 +60,17 @@ export const metadata: Metadata = {
     shortcut: "/aqua-log-2.png",
     apple: "/aqua-logo.png",
   },
- robots: {
-  index: true,
-  follow: true,
-  googleBot: {
+  robots: {
     index: true,
     follow: true,
-    "max-video-preview": -1,
-    "max-image-preview": "large",
-    "max-snippet": -1,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
-},
-
 };
 
 export default function RootLayout({
@@ -83,8 +83,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-    <main>{children}</main>
-    <Toaster />
+        <Providers> {children}</Providers>
+
+        <Toaster />
       </body>
     </html>
   );

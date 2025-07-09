@@ -371,8 +371,8 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
           thumbnail: data.thumbnail || null,
         })
 
-        if (res?.product) {
-          setProductsData((prev) => prev.map((p) => (p.id === currentProduct.id ? res.product : p)))
+        if (res?.data) {
+          setProductsData((prev) => prev.map((p) => (p.id === currentProduct.id ? res.data : p)))
           resetFormAndCloseModal()
           toast.success("Product updated successfully")
         } else if (res?.error) {

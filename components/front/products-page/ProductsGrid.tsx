@@ -1,24 +1,9 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ProductCard } from "@/components/front/products-page/ProductCard"
+import type { Product } from "@/types/product"
+import { ProductCard } from './ProductCard';
 
-interface Product {
-  id: string
-  slug: string
-  name: string
-  description: string
-  price: number
-  thumbnail: string
-  images: string[]
-  stock: number
-  discount: number
-  isAvailable: boolean
-  type: string
-  category: { id: string; name: string }
-  brand: { id: string; name: string }
-  createdAt: Date
-}
 
 interface ProductsGridProps {
   products: Product[]

@@ -1,29 +1,16 @@
 "use client"
+
 import { useState, useMemo } from "react"
-import { ProductFilters } from './ProductFilters';
-import { ProductsHero } from './ProductsHero';
+import { ProductFilters } from "./ProductFilters"
+import { ProductsHero } from "./ProductsHero"
+import { transformProduct, type ProductWithRelations } from "@/types/product"
 import { ProductsGrid } from './ProductsGrid';
 
-interface Product {
-  id: string
-  slug: string
-  name: string
-  description: string
-  price: number
-  thumbnail: string
-  images: string[]
-  stock: number
-  discount: number
-  isAvailable: boolean
-  type: string
-  category: { id: string; name: string }
-  brand: { id: string; name: string }
-  createdAt: Date
-}
+
 
 interface ProductsClientPageProps {
   data: {
-    products: Product[]
+    products: ProductWithRelations[]
     categories: Array<{ id: string; name: string }>
     brands: Array<{ id: string; name: string }>
   }
@@ -36,16 +23,21 @@ export default function ProductsClientPage({ data }: ProductsClientPageProps) {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000])
   const [sortBy, setSortBy] = useState("newest")
 
+  // Transform products to include calculated discount
+  const transformedProducts = useMemo(() => {
+    return data.products.map(transformProduct)
+  }, [data.products])
+
   // Memoize filtered products to prevent infinite re-renders
   const filteredProducts = useMemo(() => {
-    let filtered = [...data.products]
+    let filtered = [...transformedProducts]
 
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.brand.name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
@@ -74,6 +66,9 @@ export default function ProductsClientPage({ data }: ProductsClientPageProps) {
       case "name":
         filtered.sort((a, b) => a.name.localeCompare(b.name))
         break
+      case "discount":
+        filtered.sort((a, b) => b.discount - a.discount)
+        break
       case "newest":
       default:
         filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -81,7 +76,7 @@ export default function ProductsClientPage({ data }: ProductsClientPageProps) {
     }
 
     return filtered
-  }, [data.products, searchQuery, selectedCategory, selectedBrand, priceRange, sortBy])
+  }, [transformedProducts, searchQuery, selectedCategory, selectedBrand, priceRange, sortBy])
 
   const handleFilterChange = (filters: {
     search: string

@@ -2,10 +2,104 @@
 
 import { revalidatePath } from "next/cache"
 import db from "@/prisma/db"
-import { generateSlug } from "../lib/generateSlug"
-import type { ProductType, ProductCondition } from "@prisma/client"
+import { generateSlug } from "@/lib/generateSlug"
+import type { ProductCreateData, ProductMutationData } from "@/types/product"
 
-export async function getAllProducts() {
+// Standardized response types
+type ActionResponse<T> = {
+  data: T | null
+  error: string | null
+  success?: boolean
+  status?: number
+  message?: string
+}
+
+type DeleteResponse = {
+  success: boolean
+  error: string | null
+  status?: number
+  message?: string
+}
+
+// Update the updateProduct function to accept ProductMutationData
+export async function updateProduct(id: string, data: ProductMutationData): Promise<ActionResponse<any>> {
+  try {
+    // If name is being updated, generate new slug
+    const updateData: any = { ...data }
+    if (data.name) {
+      updateData.slug = generateSlug(data.name)
+    }
+
+    const product = await db.product.update({
+      where: { id },
+      data: updateData,
+      include: {
+        brand: true,
+        category: {
+          include: {
+            parent: true,
+          },
+        },
+      },
+    })
+
+    revalidatePath("/dashboard/products")
+    revalidatePath(`/dashboard/products/${product.slug}/edit`)
+
+    return {
+      data: product,
+      error: null,
+      success: true,
+      message: "Product updated successfully",
+    }
+  } catch (error) {
+    console.error("Error updating product:", error)
+    return {
+      data: null,
+      error: "Failed to update product",
+      success: false,
+    }
+  }
+}
+
+// Add a partial update function for individual sections
+export async function updateProductPartial(id: string, data: ProductMutationData): Promise<ActionResponse<any>> {
+  try {
+    // If name is being updated, generate new slug
+    const updateData: any = { ...data }
+    if (data.name) {
+      updateData.slug = generateSlug(data.name)
+    }
+
+    const product = await db.product.update({
+      where: { id },
+      data: updateData,
+      include: {
+        brand: true,
+        category: {
+          include: {
+            parent: true,
+          },
+        },
+      },
+    })
+
+    revalidatePath("/dashboard/products")
+    return {
+      data: product,
+      error: null,
+      message: "Product updated successfully",
+    }
+  } catch (error) {
+    console.error("Error updating product:", error)
+    return {
+      data: null,
+      error: "Failed to update product",
+    }
+  }
+}
+
+export async function getAllProducts(): Promise<ActionResponse<any[]>> {
   try {
     const products = await db.product.findMany({
       include: {
@@ -17,16 +111,17 @@ export async function getAllProducts() {
       orderBy: { createdAt: "desc" },
     })
 
-    console.log("Fetched products:", products)
     return {
       data: products,
       error: null,
+      success: true,
     }
   } catch (error) {
     console.error("Error fetching products:", error)
     return {
-      data: [],
+      data: null,
       error: "Failed to fetch products",
+      success: false,
     }
   }
 }
@@ -53,39 +148,20 @@ export async function getProducts() {
 
     const brands = await db.brand.findMany()
 
-    return { products, categories, brands }
+    return {
+      data: { products, categories, brands },
+      error: null,
+    }
   } catch (error) {
     console.error("Error fetching products data:", error)
-    return { products: [], categories: [], brands: [] }
+    return {
+      data: null,
+      error: "Failed to fetch products data",
+    }
   }
 }
 
-export async function createProduct(data: {
-  name: string
-  description?: string | null
-  shortDescription?: string | null
-  type: ProductType
-  categoryId: string
-  brandId: string
-  price: number
-  originalPrice?: number | null
-  costPrice?: number | null
-  thumbnail?: string | null
-  images?: string[]
-  stock: number
-  lowStockThreshold: number
-  discount: number
-  weight?: number | null
-  dimensions?: string | null
-  color?: string | null
-  condition: ProductCondition
-  warrantyMonths: number
-  isAvailable: boolean
-  isFeatured: boolean
-  isPreOwned: boolean
-  metaTitle?: string | null
-  metaDescription?: string | null
-}) {
+export async function createProduct(data: ProductCreateData): Promise<ActionResponse<any>> {
   const slug = generateSlug(data.name)
 
   try {
@@ -98,6 +174,8 @@ export async function createProduct(data: {
       return {
         data: null,
         error: "Product with this name already exists",
+        success: false,
+        status: 400,
       }
     }
 
@@ -110,6 +188,8 @@ export async function createProduct(data: {
       return {
         data: null,
         error: "Selected category does not exist",
+        success: false,
+        status: 400,
       }
     }
 
@@ -122,6 +202,8 @@ export async function createProduct(data: {
       return {
         data: null,
         error: "Selected brand does not exist",
+        success: false,
+        status: 400,
       }
     }
 
@@ -144,8 +226,9 @@ export async function createProduct(data: {
     revalidatePath("/dashboard/products")
     return {
       data: product,
-      status: 201,
+      status: 200,
       error: null,
+      success: true,
       message: "Product created successfully",
     }
   } catch (error) {
@@ -153,69 +236,13 @@ export async function createProduct(data: {
     return {
       data: null,
       error: "Failed to create product",
+      success: false,
       status: 500,
     }
   }
 }
 
-export async function updateProduct(
-  id: string,
-  data: {
-    name: string
-    description?: string | null
-    shortDescription?: string | null
-    type: ProductType
-    categoryId: string
-    brandId: string
-    price: number
-    originalPrice?: number | null
-    costPrice?: number | null
-    thumbnail?: string | null
-    images?: string[]
-    stock: number
-    lowStockThreshold: number
-    discount: number
-    weight?: number | null
-    dimensions?: string | null
-    color?: string | null
-    condition: ProductCondition
-    warrantyMonths: number
-    isAvailable: boolean
-    isFeatured: boolean
-    isPreOwned: boolean
-    metaTitle?: string | null
-    metaDescription?: string | null
-  },
-) {
-  try {
-    const slug = generateSlug(data.name)
-
-    const product = await db.product.update({
-      where: { id },
-      data: {
-        ...data,
-        slug,
-        images: data.images || [],
-      },
-      include: {
-        brand: true,
-        category: {
-          include: {
-            parent: true,
-          },
-        },
-      },
-    })
-
-    revalidatePath("/dashboard/products")
-    return { product, error: null }
-  } catch (error) {
-    console.error("Error updating product:", error)
-    return { product: null, error: "Failed to update product" }
-  }
-}
-
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: string): Promise<DeleteResponse> {
   try {
     // Check if product exists
     const product = await db.product.findUnique({
@@ -227,12 +254,22 @@ export async function deleteProduct(id: string) {
     })
 
     if (!product) {
-      return { success: false, error: "Product not found" }
+      return {
+        success: false,
+        error: "Product not found",
+        status: 404,
+        message: "Product not found",
+      }
     }
 
     // Check if product has orders
     if (product.orderItems.length > 0) {
-      return { success: false, error: "Cannot delete product with existing orders" }
+      return {
+        success: false,
+        error: "Cannot delete product with existing orders",
+        status: 400,
+        message: "Cannot delete product with existing orders",
+      }
     }
 
     // Delete cart items first
@@ -247,9 +284,88 @@ export async function deleteProduct(id: string) {
     })
 
     revalidatePath("/dashboard/products")
-    return { success: true, error: null }
+    return {
+      success: true,
+      error: null,
+      status: 200,
+      message: "Product deleted successfully",
+    }
   } catch (error) {
     console.error("Error deleting product:", error)
-    return { success: false, error: "Failed to delete product" }
+    return {
+      success: false,
+      error: "Failed to delete product",
+      status: 500,
+      message: "Failed to delete product",
+    }
+  }
+}
+
+export async function getProductBySlug(slug: string): Promise<ActionResponse<any>> {
+  try {
+    const product = await db.product.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        brand: true,
+        reviews: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        orderItems: true,
+      },
+    })
+
+    if (!product) {
+      return {
+        data: null,
+        error: "Product not found",
+      }
+    }
+
+    return {
+      data: product,
+      error: null,
+    }
+  } catch (error) {
+    console.error("Error fetching product by slug:", error)
+    return {
+      data: null,
+      error: "Failed to fetch product",
+    }
+  }
+}
+
+export async function getProductById(id: string): Promise<any> {
+  try {
+    const product = await db.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        brand: true,
+        reviews: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        orderItems: true,
+      },
+    })
+
+    return product
+  } catch (error) {
+    console.error("Error fetching product by ID:", error)
+    return null
   }
 }
