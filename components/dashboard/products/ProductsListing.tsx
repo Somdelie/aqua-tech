@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import * as XLSX from "xlsx"
@@ -14,11 +13,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
 import { createProductColumns } from "./columns"
+import { createProduct, updateProduct, deleteProduct } from "@/actions/products-action"
+import { ImageInput } from "../../forms/ImageInput"
 
 // Import types from Prisma client
-import type { Product, ProductCondition } from "@/lib/generated/prisma"
-import { useForm } from 'react-hook-form';
+import type { Product, ProductCondition } from "@prisma/client"
 
 // Updated interfaces to use Prisma types
 interface ProductsListingProps {
@@ -87,6 +88,7 @@ const productFormSchema = z.object({
   price: z.coerce.number().min(0.01, "Price must be greater than 0"),
   originalPrice: z.coerce.number().optional().nullable(),
   costPrice: z.coerce.number().optional().nullable(),
+  thumbnail: z.string().optional().nullable(),
   stock: z.coerce.number().min(0, "Stock cannot be negative"),
   lowStockThreshold: z.coerce.number().min(0, "Low stock threshold cannot be negative"),
   discount: z.coerce.number().min(0).max(100, "Discount cannot exceed 100%"),
@@ -106,8 +108,7 @@ type ProductFormData = z.infer<typeof productFormSchema>
 
 export default function ProductsListing({ products, categoryMap, brandMap }: ProductsListingProps) {
   const [productsData, setProductsData] = useState<Product[]>(products)
-  const [imageUrl, setImageUrl] = useState("")
-  const [previousImageUrl, setPreviousImageUrl] = useState("")
+  const [thumbnailUrl, setThumbnailUrl] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -133,6 +134,7 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
       price: 0,
       originalPrice: null,
       costPrice: null,
+      thumbnail: "",
       stock: 0,
       lowStockThreshold: 5,
       discount: 0,
@@ -162,6 +164,7 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
         price: Number(currentProduct.price),
         originalPrice: currentProduct.originalPrice ? Number(currentProduct.originalPrice) : undefined,
         costPrice: currentProduct.costPrice ? Number(currentProduct.costPrice) : undefined,
+        thumbnail: currentProduct.thumbnail || "",
         stock: currentProduct.stock,
         lowStockThreshold: currentProduct.lowStockThreshold,
         discount: currentProduct.discount,
@@ -176,27 +179,31 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
         metaTitle: currentProduct.metaTitle || "",
         metaDescription: currentProduct.metaDescription || "",
       })
-      if (currentProduct.thumbnail) {
-        setImageUrl(currentProduct.thumbnail)
-        setPreviousImageUrl(currentProduct.thumbnail)
-      }
+      setThumbnailUrl(currentProduct.thumbnail || "")
     } else {
       form.reset()
-      setImageUrl("")
-      setPreviousImageUrl("")
+      setThumbnailUrl("")
     }
   }, [currentProduct, form])
 
   const resetFormAndCloseModal = useCallback(() => {
     setCurrentProduct(null)
     setFormDialogOpen(false)
-    setImageUrl("")
-    setPreviousImageUrl("")
+    setThumbnailUrl("")
     form.reset()
   }, [form])
 
   const handleProductClick = (product: Product) => {
     router.push(`/dashboard/products/${product.slug}`)
+  }
+
+  const handleThumbnailChange = (url: string) => {
+    setThumbnailUrl(url)
+    form.setValue("thumbnail", url)
+  }
+
+  const handleNameChange = (name: string) => {
+    form.setValue("name", name)
   }
 
   // Utility functions
@@ -280,6 +287,7 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
       XLSX.utils.book_append_sheet(workbook, worksheet, "Products")
       const fileName = `Products_${format(new Date(), "yyyy-MM-dd")}.xlsx`
       XLSX.writeFile(workbook, fileName)
+
       toast.success("Export successful", {
         description: `Products exported to ${fileName}`,
       })
@@ -312,10 +320,14 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
   const handleConfirmDelete = async () => {
     if (productToDelete?.id) {
       try {
-        // Add your delete mutation here
-        // await deleteProductMutation.mutateAsync(productToDelete.id)
-        setDeleteDialogOpen(false)
-        toast.success("Product deleted successfully")
+        const result = await deleteProduct(productToDelete.id)
+        if (result.success) {
+          setProductsData((prev) => prev.filter((p) => p.id !== productToDelete.id))
+          setDeleteDialogOpen(false)
+          toast.success("Product deleted successfully")
+        } else {
+          toast.error("Error", { description: result.error })
+        }
       } catch (error) {
         console.error("Error deleting product:", error)
         toast.error("Failed to delete product")
@@ -327,15 +339,46 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
     setIsSubmitting(true)
     try {
       if (!currentProduct) {
-        // Create new product logic here
-        console.log("Creating product:", data)
-        toast.success("Product created successfully")
+        const res = await createProduct({
+          ...data,
+          originalPrice: data.originalPrice || null,
+          costPrice: data.costPrice || null,
+          weight: data.weight || null,
+          dimensions: data.dimensions || null,
+          color: data.color || null,
+          metaTitle: data.metaTitle || null,
+          metaDescription: data.metaDescription || null,
+          thumbnail: data.thumbnail || null,
+        })
+
+        if (res?.status === 201 && res.data) {
+          resetFormAndCloseModal()
+          setProductsData((prev) => [...prev, res.data])
+          toast.success("Product created successfully")
+        } else if (res?.error) {
+          toast.error("Error", { description: res.error })
+        }
       } else {
-        // Update existing product logic here
-        console.log("Updating product:", data)
-        toast.success("Product updated successfully")
+        const res = await updateProduct(currentProduct.id, {
+          ...data,
+          originalPrice: data.originalPrice || null,
+          costPrice: data.costPrice || null,
+          weight: data.weight || null,
+          dimensions: data.dimensions || null,
+          color: data.color || null,
+          metaTitle: data.metaTitle || null,
+          metaDescription: data.metaDescription || null,
+          thumbnail: data.thumbnail || null,
+        })
+
+        if (res?.product) {
+          setProductsData((prev) => prev.map((p) => (p.id === currentProduct.id ? res.product : p)))
+          resetFormAndCloseModal()
+          toast.success("Product updated successfully")
+        } else if (res?.error) {
+          toast.error("Error", { description: res.error })
+        }
       }
-      resetFormAndCloseModal()
     } catch (error) {
       console.error(error)
       const errorMessage = error instanceof Error ? error.message : "Something went wrong. Please try again."
@@ -352,13 +395,6 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
       const quantity = product.stock || 0
       return total + price * quantity
     }, 0)
-  }
-
-  const truncatedText = (text: string, length: number) => {
-    if (text.length > length) {
-      return text.slice(0, length) + "..."
-    }
-    return text
   }
 
   // Define columns for the data table
@@ -427,7 +463,11 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
               <FormItem>
                 <FormLabel>Product Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter product name" {...field} />
+                  <Input
+                    placeholder="Enter product name"
+                    {...field}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -591,7 +631,6 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
                   <Input placeholder="0.00" className="pl-8" {...field} value={field.value ?? ""} />
                 </div>
               </FormControl>
-              {/* <FormDescription>Your cost price for profit calculations</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -653,7 +692,6 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
               <FormControl>
                 <Input type="number" placeholder="12" {...field} />
               </FormControl>
-              {/* <FormDescription>Warranty period in months</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -692,7 +730,6 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
               <FormControl>
                 <Input placeholder="L x W x H (e.g., 10 x 5 x 2 cm)" {...field} value={field.value ?? ""} />
               </FormControl>
-              {/* <FormDescription>Product dimensions in any format</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -778,6 +815,29 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
           />
         </div>
 
+        {/* Product Image Upload */}
+        <div className="col-span-1 md:col-span-2 space-y-2">
+          <label className="text-sm font-medium">Product Image</label>
+          <div className="flex flex-col space-y-3 px-4 items-center w-full border-2 border-dashed border-orange-300 rounded-lg p-4">
+            {thumbnailUrl && (
+              <div className="relative group w-full flex justify-center items-center">
+                <img
+                  src={thumbnailUrl || "/placeholder.svg"}
+                  alt="Product image"
+                  className="w-24 h-24 object-cover rounded-md border shadow-sm"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.jpg"
+                  }}
+                />
+              </div>
+            )}
+            <ImageInput title="" imageUrl={thumbnailUrl} setImageUrl={handleThumbnailChange} endpoint="productImage" />
+            <p className="text-xs text-muted-foreground text-center">
+              Upload a high quality image for your product. JPG, PNG, and WebP formats supported (max 1MB).
+            </p>
+          </div>
+        </div>
+
         <div className="col-span-1 md:col-span-2 space-y-4">
           <div className="flex items-center space-x-6">
             <FormField
@@ -795,6 +855,7 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="isFeatured"
@@ -810,6 +871,7 @@ export default function ProductsListing({ products, categoryMap, brandMap }: Pro
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="isPreOwned"

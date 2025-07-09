@@ -1,11 +1,8 @@
 "use client"
-import { Checkbox } from "@/components/ui/checkbox"
-import DateColumn from "@/components/DataTableColumns/DateColumn"
-import SortableColumn from "@/components/DataTableColumns/SortableColumn"
-import { ActionColumn } from "@/components/DataTableColumns/ActionColumn"
-import { formatPrice } from "@/lib/formatPrice"
-import type { Product, ProductCondition } from "@/lib/generated/prisma"
-import type { Column } from "@/components/ui/data-table/data-table"
+
+import { Package, DollarSign, CheckCircle, XCircle } from "lucide-react"
+import { format } from "date-fns"
+import type { Product, ProductCondition } from "@prisma/client"
 
 // Utility functions
 const truncatedText = (text: string, length: number) => {
@@ -13,6 +10,23 @@ const truncatedText = (text: string, length: number) => {
     return text.slice(0, length) + "..."
   }
   return text
+}
+
+const formatDate = (date: Date | string) => {
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date
+    return format(dateObj, "MMM dd, yyyy")
+  } catch (error) {
+    return "Invalid date"
+  }
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 const getStockStatus = (product: Product) => {
@@ -44,137 +58,120 @@ const getConditionBadgeColor = (condition: ProductCondition) => {
   }
 }
 
-const getCategoryDisplayName = (
-  categoryId: string,
-  categoryMap: Record<string, { id: string; name: string; parentId?: string; parent?: { name: string } }>,
-) => {
-  const category = categoryMap[categoryId]
-  if (!category) return "Unknown"
-  if (category.parentId && category.parent) {
-    return `${category.parent.name} → ${category.name}`
-  }
-  return category.name
-}
-
-// Column definitions that match your DataTable's expected Column interface
+// Column definitions that work with your custom DataTable
 export const createProductColumns = (
   categoryMap: Record<string, { id: string; name: string; parentId?: string; parent?: { name: string } }>,
   onEdit: (product: Product) => void,
   onDelete: (product: Product) => void,
-): Column<Product>[] => [
-  {
-    accessorKey: "select",
-    header: ({ table }: any) => (
-      <Checkbox
-        checked={table?.getIsAllPageRowsSelected() || (table?.getIsSomePageRowsSelected() && "indeterminate")}
-        onCheckedChange={(value) => table?.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: (row: Product) => (
-      <Checkbox
-        checked={(row as any).getIsSelected?.()}
-        onCheckedChange={(value) => (row as any).toggleSelected?.(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+) => [
   {
     accessorKey: "thumbnail",
     header: "Image",
     cell: (product: Product) => {
-      const hasValidThumbnail = Boolean(product.thumbnail && product.thumbnail !== "")
-      const imgSrc = hasValidThumbnail ? product.thumbnail : "/placeholder.svg?height=40&width=40"
+      const hasValidImage = Boolean(product.thumbnail && product.thumbnail !== "")
+      const imgSrc = hasValidImage ? product.thumbnail : "/placeholder.svg?height=40&width=40"
+
       return (
-        <img
-          src={imgSrc || "/placeholder.svg"}
-          alt={product.name || "Product image"}
-          className="w-10 h-10 object-cover rounded-md"
-          onError={(e) => {
-            e.currentTarget.src = "/placeholder.svg?height=40&width=40"
-          }}
-        />
+        <div className="flex items-center justify-center w-12 h-12 bg-gray-50 rounded-lg overflow-hidden">
+          {hasValidImage ? (
+            <img
+              src={imgSrc || "/placeholder.svg"}
+              alt={product.name || "Product image"}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none"
+                const nextElement = e.currentTarget.nextElementSibling as HTMLElement
+                nextElement?.classList.remove("hidden")
+              }}
+            />
+          ) : null}
+          <Package className={`h-5 w-5 text-gray-400 ${hasValidImage ? "hidden" : ""}`} />
+        </div>
       )
     },
     enableSorting: false,
   },
   {
     accessorKey: "name",
-    header: ({ column }: any) => <SortableColumn column={column} title="Product" />,
+    header: "Product",
     cell: (product: Product) => {
+      const category = categoryMap[product.categoryId]
+      const categoryName = category ? category.name : "Unknown"
+
       return (
         <div className="flex flex-col">
-          <span className="font-medium line-clamp-1">{truncatedText(product.name, 25)}</span>
-          <span className="text-xs text-muted-foreground">{product.brandId || "Unknown Brand"}</span>
-          {product.isPreOwned && (
-            <span className="text-xs bg-orange-100 text-orange-800 px-1 rounded mt-1 w-fit">Pre-owned</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium line-clamp-1">{truncatedText(product.name, 40)}</span>
+            {product.isFeatured && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Featured
+              </span>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {categoryName} • {product.type.replace("_", " ")}
+          </div>
+          {product.shortDescription && (
+            <div className="text-xs text-muted-foreground truncate mt-1">
+              {truncatedText(product.shortDescription, 60)}
+            </div>
           )}
         </div>
       )
     },
   },
   {
-    accessorKey: "type",
-    header: ({ column }: any) => <SortableColumn column={column} title="Type" />,
-    cell: (product: Product) => {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          {product.type.replace("_", " ")}
-        </span>
-      )
-    },
-  },
-  {
-    accessorKey: "categoryId",
-    header: "Category",
-    cell: (product: Product) => {
-      return (
-        <span className="font-medium line-clamp-1">
-          {truncatedText(getCategoryDisplayName(product.categoryId, categoryMap), 25)}
-        </span>
-      )
-    },
-  },
-  {
-    accessorKey: "condition",
-    header: ({ column }: any) => <SortableColumn column={column} title="Condition" />,
-    cell: (product: Product) => {
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getConditionBadgeColor(product.condition)}`}
-        >
-          {product.condition}
-        </span>
-      )
-    },
-  },
-  {
     accessorKey: "price",
-    header: ({ column }: any) => <SortableColumn column={column} title="Price" />,
+    header: "Price",
     cell: (product: Product) => {
+      const hasOriginalPrice = product.originalPrice && Number(product.originalPrice) > Number(product.price)
+
       return (
         <div className="flex flex-col">
-          <span className="text-primary font-medium">{formatPrice(Number(product.price))}</span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formatPrice(Number(product.originalPrice))}
-            </span>
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{formatCurrency(Number(product.price))}</span>
+          </div>
+          {hasOriginalPrice && (
+            <div className="text-xs text-muted-foreground line-through">
+              {formatCurrency(Number(product.originalPrice))}
+            </div>
           )}
-          {product.discount > 0 && <span className="text-xs text-green-600">{product.discount}% off</span>}
+          {product.discount > 0 && <div className="text-xs text-green-600 font-medium">{product.discount}% off</div>}
         </div>
       )
     },
   },
   {
     accessorKey: "stock",
-    header: ({ column }: any) => <SortableColumn column={column} title="Stock" />,
+    header: "Stock",
     cell: (product: Product) => {
+      const status = getStockStatus(product)
+      const colorClass = getStockStatusColor(product)
+
       return (
-        <div className="flex items-center space-x-2">
-          <span className="font-medium">{product.stock}</span>
-          <span className={`text-xs ${getStockStatusColor(product)}`}>{getStockStatus(product)}</span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{product.stock}</span>
+          </div>
+          <div className={`text-xs font-medium ${colorClass}`}>{status}</div>
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "condition",
+    header: "Condition",
+    cell: (product: Product) => {
+      const badgeColor = getConditionBadgeColor(product.condition)
+
+      return (
+        <div className="flex flex-col gap-1">
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${badgeColor}`}>
+            {product.condition}
+          </span>
+          {product.isPreOwned && <span className="text-xs text-orange-600 font-medium">Pre-owned</span>}
         </div>
       )
     },
@@ -184,18 +181,17 @@ export const createProductColumns = (
     header: "Status",
     cell: (product: Product) => {
       return (
-        <div className="flex flex-col space-y-1">
-          <span
-            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              product.isAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-            }`}
-          >
-            {product.isAvailable ? "Available" : "Unavailable"}
-          </span>
-          {product.isFeatured && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-              Featured
-            </span>
+        <div className="flex items-center gap-2">
+          {product.isAvailable ? (
+            <>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-600 font-medium">Available</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-4 w-4 text-red-600" />
+              <span className="text-sm text-red-600 font-medium">Unavailable</span>
+            </>
           )}
         </div>
       )
@@ -203,23 +199,9 @@ export const createProductColumns = (
   },
   {
     accessorKey: "createdAt",
-    header: ({ column }: any) => <SortableColumn column={column} title="Date Created" />,
-    cell: (product: Product) => <DateColumn row={{ original: product }} accessorKey="createdAt" />,
-  },
-  {
-    accessorKey: "actions",
-    header: "Actions",
+    header: "Date Added",
     cell: (product: Product) => {
-      return (
-        <ActionColumn
-          row={{ original: product }}
-          model="product"
-          id={product.id}
-          onEdit={() => onEdit(product)}
-          onDelete={() => onDelete(product)}
-        />
-      )
+      return <div className="text-sm">{formatDate(product.createdAt)}</div>
     },
-    enableSorting: false,
   },
 ]
