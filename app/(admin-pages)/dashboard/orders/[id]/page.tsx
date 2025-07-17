@@ -4,8 +4,12 @@ import SingleOrderClient from "@/components/dashboard/orders/SingleOrderClient"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Suspense } from "react"
 
-const SingleOrderPage = async ({ params }: { params: { id: string } }) => {
-  const id = params.id
+const SingleOrderPage = async ({params}: {
+    params: Promise<{
+        id: string
+    }>
+}) => {
+  const id = (await params).id
 
   // Fetch data on the server
   const [order, userMap] = await Promise.all([getOrderByIdAdmin(id), getUsersMap()])
