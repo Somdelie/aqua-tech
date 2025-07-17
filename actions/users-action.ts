@@ -5,6 +5,8 @@ import type { RegisterFormValues } from "@/components/auth/signup"
 import { auth } from "@/lib/auth"
 import { APIError } from "better-auth/api"
 import { headers } from "next/headers"
+import db from '@/prisma/db';
+
 
 export async function registerUser(data: RegisterFormValues) {
   try {
@@ -90,4 +92,23 @@ export async function loginUser(data: LoginFormValues) {
       message: "Something went wrong during login",
     }
   }
+}
+
+export async function getAllUsers() {
+  try {
+    const users = await db.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+      },
+    })
+    return users
+  } catch (error) {
+    console.error("Error fetching users:", error)
+    return []
+  }
+  
 }

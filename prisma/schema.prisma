@@ -1,5 +1,5 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider        = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
@@ -9,16 +9,16 @@ datasource db {
 }
 
 model User {
-  id            String     @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
-  email         String     @unique
+  email         String    @unique
   emailVerified Boolean
   image         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   firstName     String
   lastName      String
-  role          Role       @default(USER)
+  role          Role      @default(USER)
   Cart          Cart?
   Order         Order[]
   Review        Review[]
@@ -30,34 +30,34 @@ model User {
 }
 
 model Session {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   ipAddress String?
   userAgent String?
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
 }
 
 model Account {
-  id                    String    @id @default(cuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
+  id                   String    @id @default(cuid())
+  accountId            String
+  providerId           String
+  userId               String
+  accessToken          String?
+  refreshToken         String?
+  idToken              String?
+  accessTokenExpiresAt DateTime?
   refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope                String?
+  password             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -74,16 +74,16 @@ model Verification {
 }
 
 model ProductCategory {
-  id          String            @id @default(cuid())
-  name        String            @unique
-  slug        String            @unique
+  id          String          @id @default(cuid())
+  name        String          @unique
+  slug        String          @unique
   description String?
   image       String?
   parentId    String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   products    Product[]
-  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  parent      ProductCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    ProductCategory[] @relation("CategoryHierarchy")
 }
 
@@ -160,17 +160,17 @@ model ProductVariant {
 }
 
 model Review {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   productId  String
   userId     String
   rating     Int
   title      String?
   comment    String?
-  isVerified Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isVerified Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
 }
@@ -196,12 +196,12 @@ model CartItem {
 }
 
 model Wishlist {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   productId String
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
 }
@@ -218,6 +218,8 @@ model Order {
   status            OrderStatus    @default(PENDING)
   paymentStatus     PaymentStatus  @default(PENDING)
   shippingStatus    ShippingStatus @default(NOT_SHIPPED)
+  deliveryMethod    DeliveryMethod @default(DELIVERY) // TEMPORARY DEFAULT ADDED
+  paymentMethod     PaymentMethod  @default(CASH_ON_DELIVERY) // TEMPORARY DEFAULT ADDED
   shippingAddress   Json?
   billingAddress    Json?
   createdAt         DateTime       @default(now())
@@ -306,4 +308,18 @@ enum ShippingStatus {
   OUT_FOR_DELIVERY
   DELIVERED
   RETURNED
+}
+
+// New Enums for Delivery and Payment Methods
+enum DeliveryMethod {
+  DELIVERY
+  COLLECTION
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+  CASH_ON_COLLECTION
+  CARD_ONLINE
+  EFT
+  BANK_TRANSFER
 }

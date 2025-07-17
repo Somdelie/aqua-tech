@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "../providers/index";
+import { EcommerceProviders } from '../providers/ecommerce-providers';
+import { auth } from '../lib/auth';
+import { headers } from 'next/headers';
 
 // Fonts
 const geistSans = Geist({
@@ -73,19 +76,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
+   const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+         <EcommerceProviders userId={session?.user?.id}>
         <Providers> {children}</Providers>
 
         <Toaster />
+        </EcommerceProviders>
       </body>
     </html>
   );

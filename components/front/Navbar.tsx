@@ -19,12 +19,13 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { signOut } from "@/lib/auth-client"
-
+import { WishlistDrawer } from '../global/wishlist-dropdown';
+import { CartDrawer } from '../global/cart-dropdown';
 interface SessionUser {
   id: string
   name: string
   email: string
-  role?: string // Add role to the interface
+  role?: string
   image?: string
 }
 
@@ -40,18 +41,16 @@ export default function Navbar({ session }: { session?: SessionUser }) {
     { name: "Products", href: "/products" },
   ]
 
-  // Define all user menu items with role requirements
   const allUserMenuItems = [
     { name: "Profile", href: "/profile", icon: UserIcon, roles: ["USER", "ADMIN"] },
-    { name: "Dashboard", href: "/dashboard", icon: PackageIcon, roles: ["ADMIN"] }, // Only for admins
+    { name: "Dashboard", href: "/dashboard", icon: PackageIcon, roles: ["ADMIN"] },
     { name: "My Orders", href: "/orders", icon: ShoppingCartIcon, roles: ["USER", "ADMIN"] },
     { name: "Wishlist", href: "/wishlist", icon: HeartIcon, roles: ["USER", "ADMIN"] },
     { name: "Settings", href: "/settings", icon: SettingsIcon, roles: ["USER", "ADMIN"] },
   ]
 
-  // Filter menu items based on user role
   const userMenuItems = allUserMenuItems.filter((item) => {
-    if (!session?.role) return item.roles.includes("USER") // Default to USER role if no role specified
+    if (!session?.role) return item.roles.includes("USER")
     return item.roles.includes(session.role)
   })
 
@@ -82,7 +81,6 @@ export default function Navbar({ session }: { session?: SessionUser }) {
       .slice(0, 2)
   }
 
-  // Check if user is admin
   const isAdmin = session?.role === "ADMIN"
 
   return (
@@ -121,39 +119,48 @@ export default function Navbar({ session }: { session?: SessionUser }) {
           {/* User Section */}
           <div className="hidden md:flex items-center space-x-4">
             {session ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 bg-teal-600">
-                      <AvatarImage src={session.image || "/placeholder.svg"} alt={session.name || "User Avatar"} />
-                      <AvatarFallback className="bg-teal-600 text-white">{getInitials(session.name)}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{session.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{session.email}</p>
-                      {isAdmin && <p className="text-xs leading-none text-teal-600 font-medium">Administrator</p>}
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {userMenuItems.map((item) => (
-                    <DropdownMenuItem key={item.name} asChild>
-                      <Link href={item.href} className="cursor-pointer">
-                        <item.icon className="mr-2 h-4 w-4" />
-                        <span>{item.name}</span>
-                      </Link>
+              <div className="flex items-center space-x-2">
+                {/* Cart Dropdown */}
+                <CartDrawer />
+
+                {/* Wishlist Drawer */}
+                <WishlistDrawer />
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10 bg-teal-600">
+                        <AvatarImage src={session.image || "/placeholder.svg"} alt={session.name || "User Avatar"} />
+                        <AvatarFallback className="bg-teal-600 text-white">{getInitials(session.name)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{session.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{session.email}</p>
+                        {isAdmin && <p className="text-xs leading-none text-teal-600 font-medium">Administrator</p>}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {userMenuItems.map((item) => (
+                      <DropdownMenuItem key={item.name} asChild>
+                        <Link href={item.href} className="cursor-pointer">
+                          <item.icon className="mr-2 h-4 w-4" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
+                      <LogOutIcon className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
                     </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer text-red-600" onClick={handleLogout}>
-                    <LogOutIcon className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ) : (
               <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleLogin}>
                 Login
@@ -177,6 +184,7 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                   </Button>
                 </div>
               </SheetHeader>
+
               <div className="flex flex-col h-full">
                 {/* User Section */}
                 {session && (
@@ -191,6 +199,22 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                         <p className="text-xs text-muted-foreground truncate">{session.email}</p>
                         {isAdmin && <p className="text-xs text-teal-600 font-medium">Administrator</p>}
                       </div>
+                    </div>
+
+                    {/* Mobile Cart & Wishlist */}
+                    <div className="flex gap-2 mt-4">
+                      <Button variant="outline" className="flex-1 bg-transparent" asChild>
+                        <Link href="/cart" onClick={() => setIsOpen(false)}>
+                          <ShoppingCartIcon className="mr-2 h-4 w-4" />
+                          Cart
+                        </Link>
+                      </Button>
+                      <Button variant="outline" className="flex-1 bg-transparent" asChild>
+                        <Link href="/wishlist" onClick={() => setIsOpen(false)}>
+                          <HeartIcon className="mr-2 h-4 w-4" />
+                          Wishlist
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -211,7 +235,7 @@ export default function Navbar({ session }: { session?: SessionUser }) {
                     ))}
                   </div>
 
-                  {/* User Menu Items - Only show if session exists */}
+                  {/* User Menu Items */}
                   {session && (
                     <>
                       <Separator className="my-4" />
