@@ -59,10 +59,6 @@ const data = {
           url: "/dashboard",
         },
         {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        },
-        {
           title: "Reports",
           url: "/dashboard/reports",
         },
@@ -101,39 +97,12 @@ const data = {
           url: "/dashboard/products",
         },
         {
-          title: "Phones",
-          url: "/dashboard/products/phones",
-        },
-        {
-          title: "Computers",
-          url: "/dashboard/products/computers",
-        },
-        {
           title: "Categories",
           url: "/dashboard/categories",
         },
         {
           title: "Brands",
           url: "/dashboard/brands",
-        },
-      ],
-    },
-    {
-      title: "Customers",
-      url: "/dashboard/customers",
-      icon: Users,
-      items: [
-        {
-          title: "All Customers",
-          url: "/dashboard/customers",
-        },
-        {
-          title: "Recent Orders",
-          url: "/dashboard/customers/recent",
-        },
-        {
-          title: "Wishlists",
-          url: "/dashboard/customers/wishlists",
         },
       ],
     },
@@ -164,23 +133,8 @@ const data = {
   projects: [
     {
       name: "Repair Services",
-      url: "/services/repairs",
+      url: "/dashboard/services/repairs",
       icon: Wrench,
-    },
-    {
-      name: "Phone Sales",
-      url: "/sales/phones",
-      icon: Smartphone,
-    },
-    {
-      name: "Computer Sales",
-      url: "/sales/computers",
-      icon: Laptop,
-    },
-    {
-      name: "Performance",
-      url: "/analytics/performance",
-      icon: TrendingUp,
     },
   ],
 }
